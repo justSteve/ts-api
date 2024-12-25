@@ -27,10 +27,11 @@ import httpx
 
 from ts.client.asynchronous import AsyncClient
 from ts.client.synchronous import Client
+from config import SCOPE, CRED_FILE
 
 AUTH_ENDPOINT = "https://signin.tradestation.com/authorize"
 TOKEN_ENDPOINT = "https://signin.tradestation.com/oauth/token"  # nosec - This isn't a hardcoded password
-AUDIENCE_ENDPOINT = "https://api.tradestation.com"
+AUDIENCE_ENDPOINT = "https://api.tradestation.com/v3"
 
 
 def get_logger() -> logging.Logger:
@@ -168,7 +169,7 @@ def easy_client(
     """
     logger = get_logger()
 
-    if os.path.isfile("ts_state.json"):
+    if os.path.isfile(CRED_FILE):
         c = client_from_token_file(client_key, client_secret, paper_trade, asyncio)
         logger.info("Returning client loaded from token file 'ts_state.json'")
     else:
@@ -210,7 +211,7 @@ def client_from_manual_flow(
         "redirect_uri": redirect_uri,
         "audience": AUDIENCE_ENDPOINT,
         "state": secrets.token_hex(16),  # Ideally, this should be dynamically generated for each request
-        "scope": "MarketData ReadAccount Trade Crypto OptionsSpreads Matrix openid offline_access profile email",
+        "scope": SCOPE,
     }
     url = httpx.get(AUTH_ENDPOINT, params=params).url
     print(f"Please go to this URL to authorize the application: {url}")
@@ -239,7 +240,7 @@ def client_from_manual_flow(
     token: dict[str, Union[str, int]] = response.json()
 
     # Update Token State (this function should be defined elsewhere)
-    update_token = __update_token("ts_state.json")
+    update_token = __update_token(CRED_FILE)
     update_token(token)
 
     # Initialize the Client
@@ -288,8 +289,8 @@ def client_from_token_file(
     return client_from_access_functions(
         client_key,
         client_secret,
-        __token_loader("ts_state.json"),
-        __update_token("ts_state.json"),
+        __token_loader(CRED_FILE),
+        __update_token(CRED_FILE),
         paper_trade,
         asyncio,
     )
